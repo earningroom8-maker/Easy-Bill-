@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@layer base {
+  .notebook-lines {
+    background-image: linear-gradient(#e5e7eb 1px, transparent 1px);
+    background-size: 100% 2rem;
+    line-height: 2rem;
+  }
+}
