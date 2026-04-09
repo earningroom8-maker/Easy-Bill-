@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F.Z Electric Service's - Bill Book</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .notebook-lines {
+            background-image: linear-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 100% 2rem;
+            line-height: 2rem;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white !important; color: black !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- Icons Component ---
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => {
+                lucide.createIcons();
+            }, [name]);
+            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
+        };
+
+        // --- Main App ---
+        function App() {
+            const [view, setView] = useState('dashboard'); // 'welcome', 'dashboard', 'note-editor', 'bill-editor', 'settings'
+            const [settings, setSettings] = useState(() => {
+                const saved = localStorage.getItem('fz_settings');
+                return saved ? JSON.parse(saved) : {
+                    darkMode: false,
+                    currency: 'Rs',
+                    businessProfile: { name: '', phone: '', address: '' }
+                };
+            });
+            const [notes, setNotes] = useState(() => JSON.parse(localStorage.getItem('fz_notes') || '[]'));
+            const [bills, setBills] = useState(() => JSON.parse(localStorage.getItem('fz_bills') || '[]'));
+            const [activeItem, setActiveItem] = useState(null);
+
+            useEffect(() => {
+                localStorage.setItem('fz_settings', JSON.stringify(settings));
+                if (settings.darkMode) document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
+            }, [settings]);
+
+            useEffect(() => localStorage.setItem('fz_notes', JSON.stringify(notes)), [notes]);
+            useEffect(() => localStorage.setItem('fz_bills', JSON.stringify(bills)), [bills]);
+
+            useEffect(() => {
+                if (!settings.businessProfile.name) setView('welcome');
+            }, []);
+
+            const handleSaveNote = (noteData) => {
+                if (activeItem) {
+                    setNotes(notes.map(n => n.id === activeItem.id ? { ...n, ...noteData } : n));
+                } else {
+                    setNotes([{ id: Date.now().toString(), createdAt: Date.now(), ...noteData }, ...notes]);
+                }
+                setView('dashboard');
+                setActiveItem(null);
+            };
+
+            const handleSaveBill = (billData) => {
+                if (activeItem) {
+                    setBills(bills.map(b => b.id === activeItem.id ? { ...b, ...billData } : b));
+                } else {
+                    setBills([{ id: Date.now().toString(), createdAt: Date.now(), ...billData }, ...bills]);
+                }
+                setView('dashboard');
+                setActiveItem(null);
+            };
+
+            // --- Views ---
+            
+            if (view === 'welcome') {
+                return (
+                    <div className="min-h-screen bg-white flex items-center justify-center p-6">
+                        <div className="max-w-md w-full space-y-8">
+                            <div className="text-center">
+                                <h1 className="text-4xl font-black text-orange-500">Welcome</h1>
+                                <p className="text-slate-500 mt-2">Setup your business profile</p>
+                            </div>
+                            <div className="space-y-4 bg-slate-50 p-6 rounded-[32px] border border-slate-100">
+                                <input 
+                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:outline-orange-500 font-bold"
+                                    placeholder="Business Name (e.g. F.Z Electric)"
+                                    value={settings.businessProfile.name}
+                                    onChange={e => setSettings({...settings, businessProfile: {...settings.businessProfile, name: e.target.value}})}
+                                />
+                                <input 
+                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:outline-orange-500 font-bold"
+                                    placeholder="Phone Number"
+                                    value={settings.businessProfile.phone}
+                                    onChange={e => setSettings({...settings, businessProfile: {...settings.businessProfile, phone: e.target.value}})}
+                                />
+                                <input 
+                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:outline-orange-500 font-bold"
+                                    placeholder="Address"
+                                    value={settings.businessProfile.address}
+                                    onChange={e => setSettings({...settings, businessProfile: {...settings.businessProfile, address: e.target.value}})}
+                                />
+                                <button 
+                                    onClick={() => settings.businessProfile.name && setView('dashboard')}
+                                    className="w-full bg-orange-500 text-white py-4 rounded-2xl font-black text-lg shadow-lg shadow-orange-200"
+                                >
+                                    Get Started
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'dashboard') {
+                return (
+                    <div className={`min-h-screen pb-24 ${settings.darkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
+                        <header className="p-6 flex justify-between items-center">
+                            <div>
+                                <h1 className="text-2xl font-black text-orange-500">F.Z Electric</h1>
+                                <p className="text-sm opacity-60">{settings.businessProfile.name}</p>
+                            </div>
+                            <button onClick={() => setSettings({...settings, darkMode: !settings.darkMode})} className="p-3 bg-white dark:bg-slate-900 rounded-full shadow-sm">
+                                <Icon name={settings.darkMode ? "sun" : "moon"} size={20} />
+                            </button>
+                        </header>
+
+                        <main className="px-6 space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-6 rounded-[32px] bg-orange-500 text-white shadow-xl shadow-orange-200 dark:shadow-none">
+                                    <Icon name="file-text" size={24} />
+                                    <p className="text-3xl font-black mt-2">{notes.length}</p>
+                                    <p className="text-xs font-bold opacity-80 uppercase tracking-widest">Notes</p>
+                                </div>
+                                <div className="p-6 rounded-[32px] bg-blue-500 text-white shadow-xl shadow-blue-200 dark:shadow-none">
+                                    <Icon name="receipt" size={24} />
+                                    <p className="text-3xl font-black mt-2">{bills.length}</p>
+                                    <p className="text-xs font-bold opacity-80 uppercase tracking-widest">Bills</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h2 className="text-lg font-black flex items-center gap-2">
+                                    <Icon name="clock" size={18} className="text-orange-500" /> Recent Activity
+                                </h2>
+                                <div className="space-y-3">
+                                    {notes.slice(0, 3).map(note => (
+                                        <div key={note.id} onClick={() => { setActiveItem(note); setView('note-editor'); }} className="p-4 bg-white dark:bg-slate-900 rounded-2xl flex justify-between items-center border border-slate-100 dark:border-slate-800">
+                                            <div>
+                                                <p className="font-bold">{note.customerName || 'Untitled Note'}</p>
+                                                <p className="text-xs opacity-50">{note.date}</p>
+                                            </div>
+                                            <Icon name="chevron-right" size={18} className="opacity-30" />
+                                        </div>
+                                    ))}
+                                    {bills.slice(0, 3).map(bill => (
+                                        <div key={bill.id} onClick={() => { setActiveItem(bill); setView('bill-editor'); }} className="p-4 bg-white dark:bg-slate-900 rounded-2xl flex justify-between items-center border border-slate-100 dark:border-slate-800">
+                                            <div>
+                                                <p className="font-bold">Bill #{bill.billNo} - {bill.customerName}</p>
+                                                <p className="text-xs opacity-50">{bill.date}</p>
+                                            </div>
+                                            <Icon name="chevron-right" size={18} className="opacity-30" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </main>
+
+                        <div className="fixed bottom-6 left-6 right-6 flex gap-4 no-print">
+                            <button onClick={() => { setActiveItem(null); setView('note-editor'); }} className="flex-1 bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl">
+                                <Icon name="plus" size={20} /> New Note
+                            </button>
+                            <button onClick={() => { setActiveItem(null); setView('bill-editor'); }} className="flex-1 bg-orange-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-orange-200">
+                                <Icon name="receipt" size={20} /> New Bill
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'note-editor') {
+                return <NoteEditor 
+                    note={activeItem} 
+                    onBack={() => setView('dashboard')} 
+                    onSave={handleSaveNote}
+                    darkMode={settings.darkMode}
+                />;
+            }
+
+            if (view === 'bill-editor') {
+                return <BillEditor 
+                    bill={activeItem} 
+                    settings={settings}
+                    onBack={() => setView('dashboard')} 
+                    onSave={handleSaveBill}
+                />;
+            }
+
+            return null;
+        }
+
+        // --- Note Editor Component ---
+        function NoteEditor({ note, onBack, onSave, darkMode }) {
+            const [customerName, setCustomerName] = useState(note?.customerName || '');
+            const [content, setContent] = useState(note?.content || '');
+            const [date] = useState(note?.date || new Date().toLocaleDateString());
+
+            return (
+                <div className={`min-h-screen flex flex-col ${darkMode ? 'bg-slate-950 text-white' : 'bg-amber-50 text-slate-900'}`}>
+                    <header className="p-4 flex items-center justify-between border-b border-black/5">
+                        <button onClick={onBack} className="p-2"><Icon name="arrow-left" /></button>
+                        <h2 className="font-black">Notebook</h2>
+                        <button onClick={() => onSave({ customerName, content, date })} className="bg-orange-500 text-white px-6 py-2 rounded-xl font-bold">Save</button>
+                    </header>
+                    <div className="p-6 space-y-4 flex-1 flex flex-col">
+                        <input 
+                            className="bg-transparent text-2xl font-black focus:outline-none placeholder:opacity-20"
+                            placeholder="Customer Name"
+                            value={customerName}
+                            onChange={e => setCustomerName(e.target.value)}
+                        />
+                        <p className="text-xs font-bold opacity-40 uppercase tracking-widest">{date}</p>
+                        <textarea 
+                            className="w-full flex-1 bg-transparent notebook-lines focus:outline-none resize-none text-lg"
+                            placeholder="Start writing..."
+                            value={content}
+                            onChange={e => setContent(e.target.value)}
+                            style={{ backgroundImage: 'linear-gradient(transparent 31px, #00000010 31px, #00000010 32px, transparent 32px)', backgroundSize: '100% 32px' }}
+                        />
+                    </div>
+                </div>
+            );
+        }
+
+        // --- Bill Editor Component ---
+        function BillEditor({ bill, settings, onBack, onSave }) {
+            const [customerName, setCustomerName] = useState(bill?.customerName || '');
+            const [billNo, setBillNo] = useState(bill?.billNo || '001');
+            const [items, setItems] = useState(bill?.items || [{ id: 1, name: '', qty: 1, rate: 0 }]);
+            const [date] = useState(bill?.date || new Date().toLocaleDateString());
+
+            const total = items.reduce((sum, item) => sum + (item.qty * item.rate), 0);
+
+            const addItem = () => setItems([...items, { id: Date.now(), name: '', qty: 1, rate: 0 }]);
+            const removeItem = (id) => setItems(items.filter(i => i.id !== id));
+            const updateItem = (id, field, val) => setItems(items.map(i => i.id === id ? {...i, [field]: val} : i));
+
+            return (
+                <div className={`min-h-screen flex flex-col ${settings.darkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
+                    <header className="p-4 flex items-center justify-between border-b border-black/5 no-print">
+                        <button onClick={onBack} className="p-2"><Icon name="arrow-left" /></button>
+                        <h2 className="font-black">Create Bill</h2>
+                        <div className="flex gap-2">
+                            <button onClick={() => window.print()} className="p-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm"><Icon name="printer" size={18} /></button>
+                            <button onClick={() => onSave({ customerName, billNo, items, date, total })} className="bg-orange-500 text-white px-6 py-2 rounded-xl font-bold">Save</button>
+                        </div>
+                    </header>
+                    
+                    <div className="p-6 space-y-6 max-w-2xl mx-auto w-full bg-white dark:bg-slate-900 my-6 rounded-[32px] shadow-xl shadow-slate-200 dark:shadow-none print:shadow-none print:my-0 print:rounded-none">
+                        <div className="flex justify-between items-start border-b pb-6 border-slate-100 dark:border-slate-800">
+                            <div>
+                                <h1 className="text-2xl font-black text-orange-500">{settings.businessProfile.name}</h1>
+                                <p className="text-xs opacity-60">{settings.businessProfile.address}</p>
+                                <p className="text-xs opacity-60">{settings.businessProfile.phone}</p>
+                            </div>
+                            <div className="text-right">
+                                <h2 className="text-3xl font-black opacity-10 uppercase tracking-tighter">INVOICE</h2>
+                                <p className="text-sm font-bold">Bill #{billNo}</p>
+                                <p className="text-xs opacity-50">{date}</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="no-print space-y-2">
+                                <label className="text-[10px] font-bold uppercase tracking-widest opacity-40">Customer Details</label>
+                                <input 
+                                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none focus:ring-2 ring-orange-500 font-bold"
+                                    placeholder="Customer Name"
+                                    value={customerName}
+                                    onChange={e => setCustomerName(e.target.value)}
+                                />
+                            </div>
+                            <div className="print-only hidden mb-4">
+                                <p className="text-sm font-bold">Bill To: <span className="font-normal">{customerName}</span></p>
+                            </div>
+
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="text-left text-[10px] font-bold uppercase tracking-widest opacity-40 border-b border-slate-100 dark:border-slate-800">
+                                        <th className="py-3">Item</th>
+                                        <th className="py-3 text-center">Qty</th>
+                                        <th className="py-3 text-right">Rate</th>
+                                        <th className="py-3 text-right">Total</th>
+                                        <th className="py-3 no-print"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {items.map(item => (
+                                        <tr key={item.id} className="border-b border-slate-50 dark:border-slate-800/50">
+                                            <td className="py-3">
+                                                <input className="w-full bg-transparent font-bold focus:outline-none" placeholder="Item name" value={item.name} onChange={e => updateItem(item.id, 'name', e.target.value)} />
+                                            </td>
+                                            <td className="py-3 text-center">
+                                                <input type="number" className="w-12 bg-transparent text-center focus:outline-none" value={item.qty} onChange={e => updateItem(item.id, 'qty', parseInt(e.target.value) || 0)} />
+                                            </td>
+                                            <td className="py-3 text-right">
+                                                <input type="number" className="w-20 bg-transparent text-right focus:outline-none" value={item.rate} onChange={e => updateItem(item.id, 'rate', parseInt(e.target.value) || 0)} />
+                                            </td>
+                                            <td className="py-3 text-right font-bold">{settings.currency} {item.qty * item.rate}</td>
+                                            <td className="py-3 text-right no-print">
+                                                <button onClick={() => removeItem(item.id)} className="text-red-400 p-1"><Icon name="trash-2" size={16} /></button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            
+                            <button onClick={addItem} className="w-full py-3 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl text-xs font-bold opacity-40 hover:opacity-100 no-print">
+                                + Add Item
+                            </button>
+
+                            <div className="flex justify-end pt-6">
+                                <div className="w-48 space-y-2">
+                                    <div className="flex justify-between text-sm opacity-60">
+                                        <span>Subtotal</span>
+                                        <span>{settings.currency} {total}</span>
+                                    </div>
+                                    <div className="flex justify-between text-xl font-black text-orange-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                        <span>Total</span>
+                                        <span>{settings.currency} {total}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-12 text-center border-t border-slate-50 dark:border-slate-800">
+                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-30">Thank you for your business!</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
