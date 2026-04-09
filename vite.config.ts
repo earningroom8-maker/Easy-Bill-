@@ -24,13 +24,13 @@ export default defineConfig(({mode}) => {
           orientation: 'portrait',
           icons: [
             {
-              src: 'pwa-192x192.png',
+              src: 'https://picsum.photos/seed/electric/192/192',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any maskable'
             },
             {
-              src: 'pwa-512x512.png',
+              src: 'https://picsum.photos/seed/electric/512/512',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any maskable'
